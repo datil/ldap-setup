@@ -17,9 +17,11 @@ local4.*                        /var/log/slapd/slapd.log
 EOF
 service rsyslog restart
 
-#tested
+
 iptables -I INPUT -m state --state NEW -m tcp -p tcp --dport 389 -j ACCEPT
 iptables -I INPUT -m state --state NEW -m tcp -p tcp --dport 636 -j ACCEPT
+
+service iptables save
 
 yum -y install openldap-servers migrationtools
 
@@ -54,14 +56,8 @@ service slapd start
 /bin/cp -f  /usr/share/doc/sudo-1.8.6p3/schema.OpenLDAP /etc/openldap/schema/sudo.schema
 restorecon /etc/openldap/schema/sudo.schema
 
-ldapadd -H ldap:/// -x -D "cn=admin,cn=config" -W << EOF
-replace: olcAccess
-olcAccess: {0}to attrs=employeeType by dn="cn=sssd,dc=test,dc=com" read by self read by * none
-olcAccess: {1}to attrs=userPassword,shadowLastChange by self write by anonymous auth by * none
-olcAccess: {2}to dn.base="" by * none
-olcAccess: {3}to * by dn="cn=admin,cn=config" write by dn="cn=sssd,dc=test,dc=com" read by self write by * none
-EOF
-
+echo "olcAccess: {0}to dn.subtree='ou=people,dc=test,dc=com' attrs=userPassword by self write by anonymous auth by * none" >> /etc/openldap/slapd.d/cn\=config/olcDatabase\=\{2\}bdb.ldif
+echo "olcAccess: {1}to * by self write by * read" >> /etc/openldap/slapd.d/cn\=config/olcDatabase\=\{2\}bdb.ldif
 
 # Create a conversion file for schema
 mkdir ~/sudoWork
